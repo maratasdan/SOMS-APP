@@ -6,10 +6,51 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct DriedGrid: View {
+    
+    @Query private var dyerheaderlist: [DryerHeader]
+    
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        
+        NavigationStack {
+            List(dyerheaderlist) { drh in
+                
+                if drh.status == "4.1" {
+                    VStack {
+                        HStack {
+                            Text("\(drh.dhid)")
+                                .font(.headline)
+                            
+                            Spacer()
+                            
+                            Text("\(drh.binid)")
+                                .font(.headline)
+                            
+                            Spacer()
+                            
+                            Text("\(drh.rhid)")
+                                .font(.headline)
+                            
+                            Spacer()
+                            
+                            Text("\(drh.skind)")
+                                .font(.headline)
+                            
+                            Spacer()
+                            
+                            Text("\(drh.status)")
+                                .font(.headline)
+                        }
+                    }
+                }
+                
+            }
+        }
+        .navigationTitle("Dried Grids")
+        
+        
     }
 }
 

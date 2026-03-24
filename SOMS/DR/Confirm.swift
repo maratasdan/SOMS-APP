@@ -10,8 +10,11 @@ struct ConfirmDRHeader: Codable, Identifiable {
     var status: String
     var initial_mc: String
     var start: String
+    var start_half: String
     var end: String
     var reversal: String
+    var skind: String
+    var hybrid_code: String
 }
 
 struct Confirm: View {
@@ -70,6 +73,22 @@ struct Confirm: View {
                         Text(confdh.lot_no)
                             .font(.caption2)
                         
+                        Spacer()
+                        
+                        if confdh.skind == "1"{
+                            Text("Corn")
+                                .font(.caption2)
+                        }else{
+                            Text("Rice")
+                                .font(.caption2)
+                        }
+                        
+                        Spacer()
+                        
+                        Text(confdh.reversal)
+                            .font(.caption2)
+                        
+                        
                     }
                 }
                 .swipeActions {
@@ -86,7 +105,7 @@ struct Confirm: View {
             }
             .navigationDestination(isPresented: $goToAdopt){
 //                Adopt(srhid: srhid, sdhid: sdhid)
-                Grid()
+                DRHome()
             }
             .alert("Error", isPresented: $alertError){
                 Text("Error")
@@ -117,8 +136,11 @@ struct Confirm: View {
                             status: item.status,
                             initial_mc: item.initial_mc,
                             start: item.start,
+                            start_half: item.start_half,
                             end: item.end,
-                            reversal: item.reversal
+                            reversal: item.reversal,
+                            skind: item.skind,
+                            hybrid_code: item.hybrid_code
                         )
                         
                         addDataDryerHeader(dhid: item.dhid, initial_mc: item.initial_mc)
@@ -137,7 +159,7 @@ struct Confirm: View {
                 .foregroundColor(.blue)
             }
             .padding()
-            .presentationDetents([.fraction(0.4)])
+            .presentationDetents([.medium, .large])
             
             
         }
@@ -165,7 +187,7 @@ struct Confirm: View {
         print("First Dryer Data Saved")
     }
     
-    func addItem( dhid: String, rhid: String, binid: String, lot_no: String, status: String, initial_mc: String, start: String, end: String, reversal: String) {
+    func addItem( dhid: String, rhid: String, binid: String, lot_no: String, status: String, initial_mc: String, start: String, start_half: String, end: String, reversal: String, skind: String, hybrid_code: String) {
         
         let item = DryerHeader(
             dhid: dhid,
@@ -175,8 +197,11 @@ struct Confirm: View {
             status: status,
             initial_mc: initial_mc,
             start: start,
+            start_half: start_half,
             end: end,
-            reversal: reversal
+            reversal: reversal,
+            skind: skind,
+            hybrid_code: hybrid_code
         )
         
         context.insert(item)
@@ -237,16 +262,17 @@ struct Confirm: View {
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let data = data {
                 let result = String(data: data, encoding: .utf8)
-                
+
                 print(result ?? "No data")
-                
-                if result == "Done" {
-                    goToAdopt = true
-                    srhid = rhidx
-                    sdhid = dhidx
-                    
-                }else if result == "Error"{
-                    alertError = true
+
+                DispatchQueue.main.async {
+                    if result == "Done" {
+                        goToAdopt = true
+                        srhid = rhidx
+                        sdhid = dhidx
+                    } else if result == "Error" {
+                        alertError = true
+                    }
                 }
             }
         }.resume()

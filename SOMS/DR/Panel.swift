@@ -10,12 +10,37 @@ import SwiftData
 import UserNotifications
 import Network
 
+import CoreNFC
+import Combine
+
+struct CustomButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label // The button's label content
+            .padding()
+            .background(configuration.isPressed ? Color.blue.opacity(0.5) : Color.blue) // Change background on press
+            .foregroundColor(.white)
+            .cornerRadius(8)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0) // Add a press animation
+    }
+}
+
 struct Panel: View {
+    
+//  NFC
+    @StateObject private var nfcReader = NFCLoginReader()
+    @State private var expectedToken = "NFC_LOGIN_TOKEN"
+    
+    @State private var goToNFC: Bool = false
     
 //  Variables
     var dhid: String
     var startDate: String
     var rhid: String
+    var binid: String
+    var lotno: String
+    
+    @AppStorage("loggedUsername") private var loggedUsername: String = ""
+    @AppStorage("loggedUserid") private var loggedUserid: String = ""
     
     @State private var latestDateSave = ""
     
@@ -33,6 +58,10 @@ struct Panel: View {
     @Query(sort: \DryerData.date, order: .reverse)
     private var dryerDataSorted: [DryerData]
     
+    @Query private var dryerHeaders: [DryerHeader]
+    
+    @Query private var users: [AppUser]
+    
 //  Sheet Related
     @State private var isOpenAddItem: Bool = false
     @State private var isConfirmAddItem: Bool = false
@@ -41,6 +70,9 @@ struct Panel: View {
     @State private var isConfirmUpdateReversal: Bool = false
     @State private var isUpdateReversalNoInternet: Bool = false
     @State private var isConfirmInternet: Bool = false
+    @State private var isShutOff: Bool = false
+    @State private var shutoffmc: String = ""
+    @State private var backToGrid: Bool = false
     
     @State private var showAlertNoInternet: Bool = false
     @State private var showAlertHaveInternet: Bool = false
@@ -133,10 +165,10 @@ struct Panel: View {
                         }){
                             Label("Update", systemImage: "arrow.2.circlepath.circle")
                         }
-//                        Text("\(dhid) - \(rhid)")
+                        
                     }
 //                    VStack{
-//                        Text("\(startDate)")
+//                        Text("\(loggedUsername) - \(loggedUserid)")
 //                    }
                 }
 //              MARK: List
@@ -249,7 +281,7 @@ struct Panel: View {
                         .disabled(true)
                     
                     Button("Yes") {
-                        addDataDryerHeader(noh: elapsedSinceStart, date: isoString, time: currentTime, upper: upperTemp, lower: lowerTemp, mc: mcnt, remarks: comment, sl: "Dan")
+                        addDataDryerHeader(noh: elapsedSinceStart, date: isoString, time: currentTime, upper: upperTemp, lower: lowerTemp, mc: mcnt, remarks: comment, sl: loggedUserid)
                         
                     }
                     .padding()
@@ -329,6 +361,32 @@ struct Panel: View {
                 .padding(20)
                 .presentationBackground(Color.white)
             }
+//          MARK: Sheet for Shutoff
+            .sheet(isPresented: $isShutOff){
+                
+                VStack{
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.title)
+                    Text("Shut off")
+                        .font(.title)
+                        .padding(.bottom, 20)
+                    VStack(alignment: .leading){
+                        Text("Enter Shutoff MC")
+                        TextField("", text: $shutoffmc)
+                            .textFieldStyle(.roundedBorder)
+                       
+                        Button("Submit"){
+                            getShutOff()
+                        }
+                        .buttonStyle(CustomButtonStyle())
+                        
+                    }
+                }
+                .padding(20)
+                .presentationDetents([.medium])
+            }
+            
+            
 //          MARK: Sheet Reversal
             .sheet(isPresented: $isReversal){
                 VStack{
@@ -380,7 +438,7 @@ struct Panel: View {
 //                                
                                 updateReversal(dhidx: dhid)
 //                                
-                                addDataDryerHeader(noh: elapsedSinceStart, date: isoString, time: currentTime, upper: upperTemp, lower: lowerTemp, mc: mcnt, remarks: "Reversal", sl: "Dan")
+                                addDataDryerHeader(noh: elapsedSinceStart, date: isoString, time: currentTime, upper: upperTemp, lower: lowerTemp, mc: mcnt, remarks: "Reversal", sl: loggedUserid)
                                 
                                 isReversal = false
                                 
@@ -540,7 +598,7 @@ struct Panel: View {
                             .cornerRadius(10)
                             
                             Button(action:{
-                                
+                                isShutOff = true
                             }){
                                 Label("Shut Off", systemImage: "poweroff")
                             }
@@ -548,6 +606,24 @@ struct Panel: View {
                             .background(Color.red)
                             .foregroundColor(.white)
                             .cornerRadius(10)
+                            
+                            
+                            if loggedUserid == "Dan" {
+                                Button(action:{
+                                   
+//                                    nfcReader.beginScan(expectedToken: expectedToken)
+                                    updateBinsToDry(context: modelContext)
+                                    
+                                }){
+                                    Label("Remove", systemImage: "document.on.trash.fill")
+                                }
+                                .padding()
+                                .background(Color.red)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
+                            }
+                            
+                            
                             
                             
                             
@@ -560,6 +636,18 @@ struct Panel: View {
             }
             .padding()
            
+            .navigationDestination(isPresented: $backToGrid) {
+                DRHome()
+            }
+            .onChange(of: dryerHeaders) {
+                print("🔥 DryerHeader changed!")
+            }
+            .onChange(of: nfcReader.lastPayload) { newValue in
+                if newValue.lowercased().contains("dan") {
+                    
+//                    updateBinsToDry(context: modelContext)
+                }
+            }
         }
         .navigationTitle("Panel")
         
@@ -580,6 +668,41 @@ struct Panel: View {
         if let results = try? modelContext.fetch(descriptor) {
             DryerService.sendBatchToServer(dataList: results)
         }
+    }
+    
+    func getShutOff(){
+        
+        if shutoffmc.isEmpty {
+            print("MC is empty")
+        }else{
+            
+            guard let url = URL(string: "https://stellarseedscorp.org/system/app/DR/getShutOff.php") else { return }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            
+            let body = "somc=\(shutoffmc)&binid=\(binid)&dhid=\(dhid)&rhid=\(rhid)&lotno=\(lotno)"
+            request.httpBody = body.data(using: .utf8)
+            
+            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            
+            URLSession.shared.dataTask(with: request) { data, response, error in
+                if let data = data {
+                    let result = String(data: data, encoding: .utf8)
+                    
+                    print(result ?? "No data")
+                    
+                    if result == "Go" {
+                        updateBinsToDry(context: modelContext)
+                    }else if result == "Error"{
+                        print(result)
+                    }
+                }
+                
+            }.resume()
+            
+        }
+        
     }
     
     
@@ -643,7 +766,7 @@ struct Panel: View {
     func addDataDryerHeader(noh: String, date: String, time: String, upper: String, lower: String, mc: String, remarks: String, sl: String){
         
         
-        let newData = DryerData(dmid: UUID().uuidString, dhid: dhid, noh: elapsedSinceStart, date: date, time: time, upper: upper, lower: lower, boiler: "", mc: mc, remarks: remarks, status: "1", sl: sl, startstrtime: "")
+        let newData = DryerData(dmid: UUID().uuidString, dhid: dhid, noh: elapsedSinceStart, date: date, time: time, upper: upper, lower: lower, boiler: "", mc: mc, remarks: remarks, status: "1", sl: loggedUserid, startstrtime: "")
         
         modelContext.insert(newData)
         
@@ -693,9 +816,124 @@ struct Panel: View {
         
     }
     
+    func updateBinsToDry(context: ModelContext){
+        
+        // ✅ Clean dhid (para iwas hidden spaces)
+        let cleanDhid = dhid.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        print("🔍 Searching dhid:", cleanDhid)
+        
+        let descriptor = FetchDescriptor<DryerHeader>(
+            predicate: #Predicate { item in
+                item.dhid == cleanDhid
+            }
+        )
+        
+        do {
+            let results = try context.fetch(descriptor)
+            
+            print("📦 Results found:", results.count)
+            
+            // 🔥 DEBUG: tan-awa tanan records
+            for r in results {
+                print("➡️ Found dhid:", r.dhid, "| status:", r.status)
+            }
+            
+            if let item = results.first {
+                
+                print("🛠 Before update:", item.status)
+                
+                // ✅ UPDATE
+                item.status = "4.1"
+                
+                print("🛠 After update:", item.status)
+                
+                // ✅ SAVE
+                try context.save()
+                
+                print("✅ Updated successfully!")
+                
+                // UI actions
+                DispatchQueue.main.async {
+                    isShutOff = false
+                    backToGrid = true
+                }
+                
+            } else {
+                print("❌ No matching record found")
+            }
+            
+        } catch {
+            print("❌ Error updating:", error)
+        }
+    }
+    
     
 }
 
+final class NFCLoginReader: NSObject, ObservableObject, NFCNDEFReaderSessionDelegate {
+    @Published private(set) var statusMessage = "Ready to scan."
+    @Published private(set) var isAuthenticated = false
+    @Published private(set) var lastPayload = ""
+
+    private var expectedToken = ""
+    private var nfcSession: NFCNDEFReaderSession?
+
+    func beginScan(expectedToken: String) {
+        self.expectedToken = expectedToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        isAuthenticated = false
+        lastPayload = ""
+        statusMessage = "Hold your phone near the tag."
+
+        nfcSession = NFCNDEFReaderSession(delegate: self, queue: nil, invalidateAfterFirstRead: true)
+        nfcSession?.alertMessage = "Hold your phone near the tag"
+        nfcSession?.begin()
+    }
+
+    func readerSession(_ session: NFCNDEFReaderSession, didInvalidateWithError error: Error) {
+        DispatchQueue.main.async {
+            self.statusMessage = "Session ended: \(error.localizedDescription)"
+        }
+    }
+
+    func readerSession(_ session: NFCNDEFReaderSession, didDetectNDEFs messages: [NFCNDEFMessage]) {
+        guard let record = messages.first?.records.first else {
+            session.invalidate(errorMessage: "No NDEF records found.")
+            DispatchQueue.main.async {
+                self.statusMessage = "No NDEF records found."
+            }
+            return
+        }
+
+        let payloadString = payloadText(from: record) ?? ""
+        let trimmedPayload = payloadString.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isMatch = !expectedToken.isEmpty && trimmedPayload == expectedToken
+
+        DispatchQueue.main.async {
+            self.lastPayload = trimmedPayload
+            self.isAuthenticated = isMatch
+            self.statusMessage = isMatch ? "Login success." : "Login failed."
+        }
+
+        session.alertMessage = isMatch ? "Login success." : "Login failed."
+        session.invalidate()
+    }
+
+    private func payloadText(from record: NFCNDEFPayload) -> String? {
+        let (text, _) = record.wellKnownTypeTextPayload()
+        if let text {
+            return text
+        }
+
+        if let url = record.wellKnownTypeURIPayload() {
+            return url.absoluteString
+        }
+
+        return String(data: record.payload, encoding: .utf8)
+    }
+}
+
+
 #Preview {
-    Panel(dhid: "1034", startDate: "2024-01-01", rhid: "")
+    Panel(dhid: "1034", startDate: "2024-01-01", rhid: "RH91543", binid: "99", lotno: "")
 }

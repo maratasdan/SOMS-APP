@@ -14,24 +14,41 @@ struct DRHome: View {
     @AppStorage("loggedUsername") private var loggedUsername: String = ""
     
     var body: some View {
-        VStack{
-            
-            VStack(alignment: .leading) {
-                VStack(alignment: .leading){
-                    Label("", systemImage: "person.circle")
+        NavigationStack {
+            VStack{
+                
+                VStack(alignment: .leading) {
+                    HStack{
+                        Label("\(loggedUsername)", systemImage: "person.circle")
+                            .font(Font.system(size: 20))
+                        Spacer()
+                        Button(){
+                            dismiss()
+                        } label: {
+                            Label("Logout", systemImage: "rectangle.portrait.and.arrow.forward")
+                                .foregroundStyle(Color.red)
+                        }
+                    }
+                    .padding(10)
+                    .padding(.leading, 29)
+                    .padding(.trailing, 29)
                 }
+                
+                List {
+                    NavigationLink(destination: DRGrid()){
+                        Label("Drying Grids", systemImage: "flame.circle")
+                    }
+                    NavigationLink(destination: Confirm()){
+                        Label("Migrate Grids", systemImage: "arrow.down.circle")
+                    }
+                    NavigationLink(destination: DriedGrid()){
+                        Label("Dried Grids", systemImage: "arrow.down.circle")
+                    }
+                }
+                
             }
-            
-            List {
-                NavigationLink(destination: Grid()){
-                    Label("Drying Grids", systemImage: "flame.circle")
-                }
-                NavigationLink(destination: Grid()){
-                    Label("Migrate Grids", systemImage: "arrow.down.circle")
-                }
-            }
-            
         }
+        .navigationBarBackButtonHidden(true)
     }
 }
 

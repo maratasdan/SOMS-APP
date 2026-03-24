@@ -10,6 +10,7 @@ import SwiftData
 
 @main
 struct SOMSApp: App {
+
     
     let notificationDelegate = NotificationDelegate()
         
@@ -19,8 +20,8 @@ struct SOMSApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            Choose()
         }
-        .modelContainer(for: [DryerHeader.self, DryerData.self])
+        .modelContainer(for: [DryerHeader.self, DryerData.self, AppUser.self])
     }
 }

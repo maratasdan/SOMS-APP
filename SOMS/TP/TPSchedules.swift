@@ -30,13 +30,13 @@ struct TPSchedules: View {
     var body: some View {
         NavigationStack {
             HStack{
-                NavigationLink(destination: ContentView()){
-                    Image(systemName: "arrow.left")
-                        .resizable()
-                        .frame(width: 30, height: 30)
-                        
-                }
-                Spacer()
+//                NavigationLink(destination: ContentView()){
+//                    Image(systemName: "arrow.left")
+//                        .resizable()
+//                        .frame(width: 30, height: 30)
+//                        
+//                }
+//                Spacer()
               
                 
                
@@ -60,7 +60,6 @@ struct TPSchedules: View {
                 }
             }
         }
-        .navigationBarBackButtonHidden(true)
         .navigationTitle("Schedules")
         .onAppear{
             fetchTPData()
