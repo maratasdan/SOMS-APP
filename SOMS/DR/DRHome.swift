@@ -33,18 +33,33 @@ struct DRHome: View {
                     .padding(.leading, 29)
                     .padding(.trailing, 29)
                 }
+                .background(Color.clear)
+                    
                 
-                List {
-                    NavigationLink(destination: DRGrid()){
-                        Label("Drying Grids", systemImage: "flame.circle")
+                    List {
+                        Section(header: Text("Operations")) {
+                            NavigationLink(destination: DRGrid()){
+                                Label("Drying Grids", systemImage: "flame.circle")
+                            }
+                            NavigationLink(destination: Confirm()){
+                                Label("Migrate Grids", systemImage: "arrow.down.circle")
+                            }
+//                            NavigationLink(destination: DriedGrid()){
+//                                Label("Dried Grids", systemImage: "arrow.down.circle")
+//                            }
+                        }
+                        
+                        Section(header: Text("Approval")) {
+                            NavigationLink(destination: ApproveBins()){
+                                Label("Approve Bins", systemImage: "arrow.down.circle")
+                                
+                            }
+                        }
+                        
                     }
-                    NavigationLink(destination: Confirm()){
-                        Label("Migrate Grids", systemImage: "arrow.down.circle")
-                    }
-                    NavigationLink(destination: DriedGrid()){
-                        Label("Dried Grids", systemImage: "arrow.down.circle")
-                    }
-                }
+                
+                
+                
                 
             }
         }

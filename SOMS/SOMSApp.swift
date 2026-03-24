@@ -20,7 +20,8 @@ struct SOMSApp: App {
     
     var body: some Scene {
         WindowGroup {
-            Choose()
+//            Choose()
+            DRHome()
         }
         .modelContainer(for: [DryerHeader.self, DryerData.self, AppUser.self])
     }

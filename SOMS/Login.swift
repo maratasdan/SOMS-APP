@@ -109,20 +109,20 @@ struct Login: View {
                             errormessage = "You are not eligible to use this app. Please contact the admin."
                         }
                         
-//                        if let user = checkUser(username: username, password: password, context: modelContext) {
-//                            
-//                            loggedUsername = user.username
-//                            loggedUserid = user.userid
-//                            
-//                            goToDR = true
-//                            
-//                            errormessage = user.user_level_id ?? "Error"
-////                          isLoggedIn = true
-//                            
-//                        } else {
-//                            
-//                            errormessage = "You are not eligible to use this app. Please contact the admin."
-//                        }
+                        if let user = checkUser(username: username, password: password, context: modelContext) {
+                            
+                            loggedUsername = user.username
+                            loggedUserid = user.userid
+                            
+                            goToDR = true
+                            
+                            errormessage = user.user_level_id ?? "Error"
+//                          isLoggedIn = true
+                            
+                        } else {
+                            
+                            errormessage = "You are not eligible to use this app. Please contact the admin."
+                        }
                         
                     } label: {
                         
@@ -140,7 +140,7 @@ struct Login: View {
                             loggedUsername = "dan"
                             loggedUserid = "Dan"
                             
-                            goToDR = true
+                            goToSL = true
                         }
                         
                     }){
